@@ -38,7 +38,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 public abstract class BaseIntegrationTest {
 
     @Container
-    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:17-alpine");
+    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:18-alpine");
 
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {

@@ -34,10 +34,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Java 21 (Temurin)
+      - name: Set up Java 26 (Temurin)
         uses: actions/setup-java@v4
         with:
-          java-version: '21'
+          java-version: '26'
           distribution: temurin
 
       - name: Cache Maven dependencies

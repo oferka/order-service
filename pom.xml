@@ -18,7 +18,7 @@
     <description>Order management microservice</description>
 
     <properties>
-        <java.version>25</java.version>
+        <java.version>26</java.version>
         <mapstruct.version>1.6.3</mapstruct.version>
         <springdoc.version>3.0.2</springdoc.version>
         <logstash-encoder.version>9.0</logstash-encoder.version>

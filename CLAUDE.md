@@ -1,7 +1,7 @@
 # Order Service — Project Guidelines
 
 ## Tech Stack
-- Java 25, Spring Boot 4.0.5, Maven
+- Java 26, Spring Boot 4.0.5, Maven
 - PostgreSQL 18, Liquibase for database migrations
 - MapStruct for DTO mapping, Lombok for boilerplate reduction
 

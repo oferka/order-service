@@ -1,5 +1,12 @@
 # ── Build stage ───────────────────────────────────────────────────────────────
-FROM maven:3.9-eclipse-temurin-25 AS build
+# No official maven:3.9-eclipse-temurin-26 image exists yet; install Maven onto the JDK image.
+FROM eclipse-temurin:26-jdk AS build
+ARG MAVEN_VERSION=3.9.9
+RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && \
+    curl -fsSL https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz \
+      | tar -xzC /opt && \
+    ln -s /opt/apache-maven-${MAVEN_VERSION}/bin/mvn /usr/local/bin/mvn && \
+    rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 # Cache dependency layer separately from source
@@ -11,7 +18,7 @@ RUN mvn package -DskipTests -B \
     && mv target/order-service-*.jar target/app.jar
 
 # ── Runtime stage ─────────────────────────────────────────────────────────────
-FROM eclipse-temurin:25-jre
+FROM eclipse-temurin:26-jre
 WORKDIR /app
 
 COPY --from=build /app/target/app.jar app.jar

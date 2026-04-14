@@ -18,6 +18,7 @@ import org.example.orderservice.model.OrderStatus;
 import org.example.orderservice.repository.CustomerRepository;
 import org.example.orderservice.repository.OrderRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -67,155 +68,171 @@ class OrderServiceImplTest {
                 .thenAnswer(inv -> inv.<Supplier<?>>getArgument(0).get());
     }
 
-    @Test
-    void createOrder_Success() {
-        UUID customerId = UUID.randomUUID();
-        UUID orderId = UUID.randomUUID();
-        AddressRequest address = new AddressRequest("123 Main St", "Springfield", "IL", "62701", "US");
-        OrderItemRequest item = new OrderItemRequest("prod-1", "Widget", 2, new BigDecimal("15.00"));
-        CreateOrderRequest request = new CreateOrderRequest(customerId, List.of(item), address);
+    @Nested
+    class CreateOrder {
 
-        Customer customer = Customer.builder()
-                .id(customerId).email("jane@example.com").fullName("Jane Doe").build();
-        Order mappedOrder = Order.builder().orderItems(new ArrayList<>()).build();
-        Order savedOrder = Order.builder()
-                .id(orderId).orderNumber("ORD-TEST0001").customer(customer)
-                .status(OrderStatus.CREATED).totalAmount(new BigDecimal("30.00"))
-                .orderItems(new ArrayList<>()).build();
-        OrderResponse expectedResponse = new OrderResponse(orderId, "ORD-TEST0001", OrderStatus.CREATED,
-                "jane@example.com", "Jane Doe", List.of(), null, new BigDecimal("30.00"), null, null);
+        @Test
+        void should_createOrder_when_customerExists() {
+            UUID customerId = UUID.randomUUID();
+            UUID orderId = UUID.randomUUID();
+            AddressRequest address = new AddressRequest("123 Main St", "Springfield", "IL", "62701", "US");
+            OrderItemRequest item = new OrderItemRequest("prod-1", "Widget", 2, new BigDecimal("15.00"));
+            CreateOrderRequest request = new CreateOrderRequest(customerId, List.of(item), address);
 
-        when(customerRepository.findById(customerId)).thenReturn(Optional.of(customer));
-        when(orderMapper.toEntity(request)).thenReturn(mappedOrder);
-        when(orderRepository.save(any(Order.class))).thenReturn(savedOrder);
-        when(orderMapper.toResponse(savedOrder)).thenReturn(expectedResponse);
+            Customer customer = Customer.builder()
+                    .id(customerId).email("jane@example.com").fullName("Jane Doe").build();
+            Order mappedOrder = Order.builder().orderItems(new ArrayList<>()).build();
+            Order savedOrder = Order.builder()
+                    .id(orderId).orderNumber("ORD-TEST0001").customer(customer)
+                    .status(OrderStatus.CREATED).totalAmount(new BigDecimal("30.00"))
+                    .orderItems(new ArrayList<>()).build();
+            OrderResponse expectedResponse = new OrderResponse(orderId, "ORD-TEST0001", OrderStatus.CREATED,
+                    "jane@example.com", "Jane Doe", List.of(), null, new BigDecimal("30.00"), null, null);
 
-        OrderResponse result = orderService.createOrder(request);
+            when(customerRepository.findById(customerId)).thenReturn(Optional.of(customer));
+            when(orderMapper.toEntity(request)).thenReturn(mappedOrder);
+            when(orderRepository.save(any(Order.class))).thenReturn(savedOrder);
+            when(orderMapper.toResponse(savedOrder)).thenReturn(expectedResponse);
 
-        assertThat(result).isEqualTo(expectedResponse);
-        assertThat(mappedOrder.getCustomer()).isEqualTo(customer);
-        assertThat(mappedOrder.getStatus()).isEqualTo(OrderStatus.CREATED);
-        assertThat(mappedOrder.getTotalAmount()).isEqualByComparingTo(new BigDecimal("30.00"));
-        verify(orderRepository, times(1)).save(mappedOrder);
-        verify(eventPublisher, times(1)).publishEvent(any(OrderCreatedEvent.class));
+            OrderResponse result = orderService.createOrder(request);
+
+            assertThat(result).isEqualTo(expectedResponse);
+            assertThat(mappedOrder.getCustomer()).isEqualTo(customer);
+            assertThat(mappedOrder.getStatus()).isEqualTo(OrderStatus.CREATED);
+            assertThat(mappedOrder.getTotalAmount()).isEqualByComparingTo(new BigDecimal("30.00"));
+            verify(orderRepository, times(1)).save(mappedOrder);
+            verify(eventPublisher, times(1)).publishEvent(any(OrderCreatedEvent.class));
+        }
+
+        @Test
+        void should_throwEntityNotFoundException_when_customerNotFound() {
+            UUID customerId = UUID.randomUUID();
+            CreateOrderRequest request = new CreateOrderRequest(customerId, List.of(),
+                    new AddressRequest("s", "c", "st", "z", "US"));
+
+            when(customerRepository.findById(customerId)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> orderService.createOrder(request))
+                    .isInstanceOf(EntityNotFoundException.class);
+
+            verify(orderRepository, never()).save(any());
+            verify(eventPublisher, never()).publishEvent(any());
+        }
     }
 
-    @Test
-    void createOrder_CustomerNotFound() {
-        UUID customerId = UUID.randomUUID();
-        CreateOrderRequest request = new CreateOrderRequest(customerId, List.of(),
-                new AddressRequest("s", "c", "st", "z", "US"));
+    @Nested
+    class UpdateOrderStatus {
 
-        when(customerRepository.findById(customerId)).thenReturn(Optional.empty());
+        @Test
+        void should_updateOrderStatus_when_transitionIsValid() {
+            String orderNumber = "ORD-VALID001";
+            UUID orderId = UUID.randomUUID();
+            Order order = Order.builder()
+                    .id(orderId).orderNumber(orderNumber)
+                    .status(OrderStatus.CREATED).orderItems(new ArrayList<>()).build();
+            UpdateOrderStatusRequest request = new UpdateOrderStatusRequest(OrderStatus.CONFIRMED);
+            Order savedOrder = Order.builder()
+                    .id(orderId).orderNumber(orderNumber)
+                    .status(OrderStatus.CONFIRMED).orderItems(new ArrayList<>()).build();
+            OrderResponse expectedResponse = new OrderResponse(orderId, orderNumber, OrderStatus.CONFIRMED,
+                    null, null, List.of(), null, BigDecimal.ZERO, null, null);
 
-        assertThatThrownBy(() -> orderService.createOrder(request))
-                .isInstanceOf(EntityNotFoundException.class);
+            when(orderRepository.findByOrderNumber(orderNumber)).thenReturn(Optional.of(order));
+            when(orderRepository.save(order)).thenReturn(savedOrder);
+            when(orderMapper.toResponse(savedOrder)).thenReturn(expectedResponse);
 
-        verify(orderRepository, never()).save(any());
-        verify(eventPublisher, never()).publishEvent(any());
+            OrderResponse result = orderService.updateOrderStatus(orderNumber, request);
+
+            assertThat(result).isEqualTo(expectedResponse);
+            assertThat(order.getStatus()).isEqualTo(OrderStatus.CONFIRMED);
+            verify(orderRepository, times(1)).save(order);
+            verify(eventPublisher, times(1)).publishEvent(any(OrderStatusChangedEvent.class));
+        }
+
+        @Test
+        void should_throwIllegalStateException_when_transitionIsInvalid() {
+            String orderNumber = "ORD-DELIV001";
+            Order order = Order.builder()
+                    .id(UUID.randomUUID()).orderNumber(orderNumber)
+                    .status(OrderStatus.DELIVERED).orderItems(new ArrayList<>()).build();
+            UpdateOrderStatusRequest request = new UpdateOrderStatusRequest(OrderStatus.CREATED);
+
+            when(orderRepository.findByOrderNumber(orderNumber)).thenReturn(Optional.of(order));
+
+            assertThatThrownBy(() -> orderService.updateOrderStatus(orderNumber, request))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("Cannot transition");
+
+            verify(orderRepository, never()).save(any());
+            verify(eventPublisher, never()).publishEvent(any());
+        }
     }
 
-    @Test
-    void updateOrderStatus_ValidTransition() {
-        String orderNumber = "ORD-VALID001";
-        UUID orderId = UUID.randomUUID();
-        Order order = Order.builder()
-                .id(orderId).orderNumber(orderNumber)
-                .status(OrderStatus.CREATED).orderItems(new ArrayList<>()).build();
-        UpdateOrderStatusRequest request = new UpdateOrderStatusRequest(OrderStatus.CONFIRMED);
-        Order savedOrder = Order.builder()
-                .id(orderId).orderNumber(orderNumber)
-                .status(OrderStatus.CONFIRMED).orderItems(new ArrayList<>()).build();
-        OrderResponse expectedResponse = new OrderResponse(orderId, orderNumber, OrderStatus.CONFIRMED,
-                null, null, List.of(), null, BigDecimal.ZERO, null, null);
+    @Nested
+    class CancelOrder {
 
-        when(orderRepository.findByOrderNumber(orderNumber)).thenReturn(Optional.of(order));
-        when(orderRepository.save(order)).thenReturn(savedOrder);
-        when(orderMapper.toResponse(savedOrder)).thenReturn(expectedResponse);
+        @Test
+        void should_cancelOrder_when_orderIsCreated() {
+            String orderNumber = "ORD-CANCEL01";
+            UUID orderId = UUID.randomUUID();
+            Order order = Order.builder()
+                    .id(orderId).orderNumber(orderNumber)
+                    .status(OrderStatus.CREATED).orderItems(new ArrayList<>()).build();
+            Order savedOrder = Order.builder()
+                    .id(orderId).orderNumber(orderNumber)
+                    .status(OrderStatus.CANCELLED).orderItems(new ArrayList<>()).build();
+            OrderResponse expectedResponse = new OrderResponse(orderId, orderNumber, OrderStatus.CANCELLED,
+                    null, null, List.of(), null, BigDecimal.ZERO, null, null);
 
-        OrderResponse result = orderService.updateOrderStatus(orderNumber, request);
+            when(orderRepository.findByOrderNumber(orderNumber)).thenReturn(Optional.of(order));
+            when(orderRepository.save(order)).thenReturn(savedOrder);
+            when(orderMapper.toResponse(savedOrder)).thenReturn(expectedResponse);
 
-        assertThat(result).isEqualTo(expectedResponse);
-        assertThat(order.getStatus()).isEqualTo(OrderStatus.CONFIRMED);
-        verify(orderRepository, times(1)).save(order);
-        verify(eventPublisher, times(1)).publishEvent(any(OrderStatusChangedEvent.class));
+            orderService.cancelOrder(orderNumber);
+
+            assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELLED);
+            verify(orderRepository, times(1)).save(order);
+            verify(eventPublisher, times(1)).publishEvent(any(OrderStatusChangedEvent.class));
+        }
+
+        @Test
+        void should_throwIllegalStateException_when_orderIsAlreadyDelivered() {
+            String orderNumber = "ORD-DELIV002";
+            Order order = Order.builder()
+                    .id(UUID.randomUUID()).orderNumber(orderNumber)
+                    .status(OrderStatus.DELIVERED).orderItems(new ArrayList<>()).build();
+
+            when(orderRepository.findByOrderNumber(orderNumber)).thenReturn(Optional.of(order));
+
+            assertThatThrownBy(() -> orderService.cancelOrder(orderNumber))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("Cannot transition");
+
+            verify(orderRepository, never()).save(any());
+            verify(eventPublisher, never()).publishEvent(any());
+        }
     }
 
-    @Test
-    void updateOrderStatus_InvalidTransition() {
-        String orderNumber = "ORD-DELIV001";
-        Order order = Order.builder()
-                .id(UUID.randomUUID()).orderNumber(orderNumber)
-                .status(OrderStatus.DELIVERED).orderItems(new ArrayList<>()).build();
-        UpdateOrderStatusRequest request = new UpdateOrderStatusRequest(OrderStatus.CREATED);
+    @Nested
+    class ListOrders {
 
-        when(orderRepository.findByOrderNumber(orderNumber)).thenReturn(Optional.of(order));
+        @Test
+        void should_returnPagedOrders_when_filtersAreApplied() {
+            UUID customerId = UUID.randomUUID();
+            OrderStatus status = OrderStatus.CONFIRMED;
+            Pageable pageable = PageRequest.of(0, 10);
+            Page<Order> emptyPage = new PageImpl<>(List.of(), pageable, 0);
 
-        assertThatThrownBy(() -> orderService.updateOrderStatus(orderNumber, request))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("Cannot transition");
+            when(orderRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(emptyPage);
 
-        verify(orderRepository, never()).save(any());
-        verify(eventPublisher, never()).publishEvent(any());
-    }
+            PagedResponse<OrderResponse> result = orderService.listOrders(customerId, status, pageable);
 
-    @Test
-    void cancelOrder_Success() {
-        String orderNumber = "ORD-CANCEL01";
-        UUID orderId = UUID.randomUUID();
-        Order order = Order.builder()
-                .id(orderId).orderNumber(orderNumber)
-                .status(OrderStatus.CREATED).orderItems(new ArrayList<>()).build();
-        Order savedOrder = Order.builder()
-                .id(orderId).orderNumber(orderNumber)
-                .status(OrderStatus.CANCELLED).orderItems(new ArrayList<>()).build();
-        OrderResponse expectedResponse = new OrderResponse(orderId, orderNumber, OrderStatus.CANCELLED,
-                null, null, List.of(), null, BigDecimal.ZERO, null, null);
-
-        when(orderRepository.findByOrderNumber(orderNumber)).thenReturn(Optional.of(order));
-        when(orderRepository.save(order)).thenReturn(savedOrder);
-        when(orderMapper.toResponse(savedOrder)).thenReturn(expectedResponse);
-
-        orderService.cancelOrder(orderNumber);
-
-        assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELLED);
-        verify(orderRepository, times(1)).save(order);
-        verify(eventPublisher, times(1)).publishEvent(any(OrderStatusChangedEvent.class));
-    }
-
-    @Test
-    void cancelOrder_AlreadyDelivered() {
-        String orderNumber = "ORD-DELIV002";
-        Order order = Order.builder()
-                .id(UUID.randomUUID()).orderNumber(orderNumber)
-                .status(OrderStatus.DELIVERED).orderItems(new ArrayList<>()).build();
-
-        when(orderRepository.findByOrderNumber(orderNumber)).thenReturn(Optional.of(order));
-
-        assertThatThrownBy(() -> orderService.cancelOrder(orderNumber))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("Cannot transition");
-
-        verify(orderRepository, never()).save(any());
-        verify(eventPublisher, never()).publishEvent(any());
-    }
-
-    @Test
-    void listOrders_WithFilters() {
-        UUID customerId = UUID.randomUUID();
-        OrderStatus status = OrderStatus.CONFIRMED;
-        Pageable pageable = PageRequest.of(0, 10);
-        Page<Order> emptyPage = new PageImpl<>(List.of(), pageable, 0);
-
-        when(orderRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(emptyPage);
-
-        PagedResponse<OrderResponse> result = orderService.listOrders(customerId, status, pageable);
-
-        assertThat(result.content()).isEmpty();
-        assertThat(result.page()).isEqualTo(0);
-        assertThat(result.size()).isEqualTo(10);
-        assertThat(result.totalElements()).isEqualTo(0);
-        assertThat(result.totalPages()).isEqualTo(0);
-        verify(orderRepository, times(1)).findAll(any(Specification.class), eq(pageable));
+            assertThat(result.content()).isEmpty();
+            assertThat(result.page()).isEqualTo(0);
+            assertThat(result.size()).isEqualTo(10);
+            assertThat(result.totalElements()).isEqualTo(0);
+            assertThat(result.totalPages()).isEqualTo(0);
+            verify(orderRepository, times(1)).findAll(any(Specification.class), eq(pageable));
+        }
     }
 }

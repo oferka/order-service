@@ -8,7 +8,6 @@ import jakarta.validation.Valid;
 import org.example.orderservice.dto.CreateCustomerRequest;
 import org.example.orderservice.dto.CustomerResponse;
 import org.example.orderservice.service.CustomerService;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -18,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.net.URI;
 import java.util.UUID;
 
 @RestController
@@ -39,7 +39,9 @@ public class CustomerController {
         @ApiResponse(responseCode = "409", description = "Email already in use")
     })
     public ResponseEntity<CustomerResponse> createCustomer(@Valid @RequestBody CreateCustomerRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(customerService.createCustomer(request));
+        CustomerResponse response = customerService.createCustomer(request);
+        URI location = URI.create("/api/v1/customers/" + response.id());
+        return ResponseEntity.created(location).body(response);
     }
 
     @GetMapping("/{id}")

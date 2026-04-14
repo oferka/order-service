@@ -1,5 +1,6 @@
 package org.example.orderservice.model;
 
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -13,24 +14,32 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class OrderStatusTransitionTest {
 
-    @ParameterizedTest(name = "{0} → {1} should succeed")
-    @MethodSource("validTransitions")
-    void transitionTo_validTransition_updatesStatus(OrderStatus from, OrderStatus to) {
-        Order order = orderWithStatus(from);
+    @Nested
+    class ValidTransitions {
 
-        order.transitionTo(to);
+        @ParameterizedTest(name = "{0} → {1} should succeed")
+        @MethodSource("org.example.orderservice.model.OrderStatusTransitionTest#validTransitions")
+        void should_updateStatus_when_transitionIsValid(OrderStatus from, OrderStatus to) {
+            Order order = orderWithStatus(from);
 
-        assertThat(order.getStatus()).isEqualTo(to);
+            order.transitionTo(to);
+
+            assertThat(order.getStatus()).isEqualTo(to);
+        }
     }
 
-    @ParameterizedTest(name = "{0} → {1} should throw IllegalStateException")
-    @MethodSource("invalidTransitions")
-    void transitionTo_invalidTransition_throwsIllegalStateException(OrderStatus from, OrderStatus to) {
-        Order order = orderWithStatus(from);
+    @Nested
+    class InvalidTransitions {
 
-        assertThatThrownBy(() -> order.transitionTo(to))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("Cannot transition order from " + from + " to " + to);
+        @ParameterizedTest(name = "{0} → {1} should throw IllegalStateException")
+        @MethodSource("org.example.orderservice.model.OrderStatusTransitionTest#invalidTransitions")
+        void should_throwIllegalStateException_when_transitionIsInvalid(OrderStatus from, OrderStatus to) {
+            Order order = orderWithStatus(from);
+
+            assertThatThrownBy(() -> order.transitionTo(to))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("Cannot transition order from " + from + " to " + to);
+        }
     }
 
     static Stream<Arguments> validTransitions() {

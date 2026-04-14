@@ -46,6 +46,12 @@ management:
     tags:
       application: ${spring.application.name}
 
+# ── Pagination ─────────────────────────────────────────────────────────────
+  data:
+    web:
+      pageable:
+        max-page-size: 100
+
 # ── OpenAPI ────────────────────────────────────────────────────────────────
 springdoc:
   swagger-ui:

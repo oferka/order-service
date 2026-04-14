@@ -39,20 +39,20 @@ public class OrderItem {
     @JoinColumn(name = "order_id")
     private Order order;
 
-    @Column(nullable = false)
+    @Column(name = "product_id", nullable = false)
     private String productId;
 
-    @Column(nullable = false)
+    @Column(name = "product_name", nullable = false)
     private String productName;
 
     @Min(1)
-    @Column(nullable = false)
+    @Column(name = "quantity", nullable = false)
     private int quantity;
 
-    @Column(precision = 10, scale = 2, nullable = false)
+    @Column(name = "unit_price", precision = 10, scale = 2, nullable = false)
     private BigDecimal unitPrice;
 
-    @Column(precision = 10, scale = 2, nullable = false)
+    @Column(name = "subtotal", precision = 10, scale = 2, nullable = false)
     private BigDecimal subtotal;
 
     @PrePersist

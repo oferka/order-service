@@ -49,11 +49,11 @@ public class Order {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(nullable = false, unique = true, updatable = false)
+    @Column(name = "order_number", nullable = false, unique = true, updatable = false)
     private String orderNumber;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "status", nullable = false)
     @Builder.Default
     private OrderStatus status = OrderStatus.CREATED;
 
@@ -65,7 +65,7 @@ public class Order {
     @Builder.Default
     private List<OrderItem> orderItems = new ArrayList<>();
 
-    @Column(precision = 12, scale = 2)
+    @Column(name = "total_amount", precision = 12, scale = 2)
     @Builder.Default
     private BigDecimal totalAmount = BigDecimal.ZERO;
 
@@ -73,11 +73,11 @@ public class Order {
     private ShippingAddress shippingAddress;
 
     @CreatedDate
-    @Column(nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @LastModifiedDate
-    @Column(nullable = false)
+    @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
     @Version

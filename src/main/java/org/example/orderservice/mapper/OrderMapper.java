@@ -1,10 +1,13 @@
 package org.example.orderservice.mapper;
 
+import org.example.orderservice.dto.AddressRequest;
 import org.example.orderservice.dto.CreateOrderRequest;
+import org.example.orderservice.dto.OrderItemRequest;
 import org.example.orderservice.dto.OrderItemResponse;
 import org.example.orderservice.dto.OrderResponse;
 import org.example.orderservice.model.Order;
 import org.example.orderservice.model.OrderItem;
+import org.example.orderservice.model.ShippingAddress;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
@@ -23,6 +26,13 @@ public interface OrderMapper {
     @Mapping(target = "version", ignore = true)
     @Mapping(target = "orderItems", source = "items")
     Order toEntity(CreateOrderRequest request);
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "order", ignore = true)
+    @Mapping(target = "subtotal", ignore = true)
+    OrderItem toOrderItem(OrderItemRequest request);
+
+    ShippingAddress toShippingAddress(AddressRequest request);
 
     @Mapping(target = "customerEmail", source = "customer.email")
     @Mapping(target = "customerName", source = "customer.fullName")

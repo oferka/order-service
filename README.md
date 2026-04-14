@@ -1,6 +1,6 @@
 # order-service
 
-Order management microservice built with Java 26 and Spring Boot 4.0.5.
+Order management microservice built with Java 25 and Spring Boot 4.0.5.
 
 ## Prerequisites
 

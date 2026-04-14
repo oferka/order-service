@@ -6,7 +6,7 @@
 - The cross service communication is done via REST calls, events, etc.
 
 ## Tech Stack
-- Java 26, Spring Boot 4.0.5, Maven
+- Java 25, Spring Boot 4.0.5, Maven
 - PostgreSQL 18, Liquibase for database migrations
 - MapStruct (componentModel = "spring") for DTO mapping
 - Lombok for boilerplate reduction

@@ -53,6 +53,10 @@ springdoc:
   api-docs:
     path: /v3/api-docs
 
+# ── JWT ────────────────────────────────────────────────────────────────────
+jwt:
+  secret: order-service-jwt-signing-secret-key-for-hmac-sha256-algorithm
+
 # ── Logging (dev) ──────────────────────────────────────────────────────────
 logging:
   level:

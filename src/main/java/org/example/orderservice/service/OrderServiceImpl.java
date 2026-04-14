@@ -19,6 +19,8 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+
+import java.util.ArrayList;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -82,16 +84,16 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional(readOnly = true)
     public PagedResponse<OrderResponse> listOrders(UUID customerId, OrderStatus status, Pageable pageable) {
-        Specification<Order> spec = Specification.where(null);
+        List<Specification<Order>> specs = new ArrayList<>();
 
         if (customerId != null) {
-            spec = spec.and((root, query, cb) -> cb.equal(root.get("customer").get("id"), customerId));
+            specs.add((root, query, cb) -> cb.equal(root.get("customer").get("id"), customerId));
         }
         if (status != null) {
-            spec = spec.and((root, query, cb) -> cb.equal(root.get("status"), status));
+            specs.add((root, query, cb) -> cb.equal(root.get("status"), status));
         }
 
-        Page<Order> page = orderRepository.findAll(spec, pageable);
+        Page<Order> page = orderRepository.findAll(Specification.allOf(specs), pageable);
         List<OrderResponse> content = page.getContent().stream()
                 .map(orderMapper::toResponse)
                 .toList();

@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -64,7 +65,8 @@ public class OrderServiceImpl implements OrderService {
 
         Order saved = orderRepository.save(order);
         log.info("Order created: orderNumber={}, customerId={}", saved.getOrderNumber(), customer.getId());
-        eventPublisher.publishEvent(new OrderCreatedEvent(saved));
+        eventPublisher.publishEvent(new OrderCreatedEvent(
+                saved.getId(), saved.getOrderNumber(), customer.getId(), saved.getTotalAmount(), Instant.now()));
 
         return orderMapper.toResponse(saved);
     }
@@ -108,7 +110,8 @@ public class OrderServiceImpl implements OrderService {
         Order saved = orderRepository.save(order);
 
         log.info("Order status changed: orderNumber={}, {} -> {}", orderNumber, previousStatus, request.status());
-        eventPublisher.publishEvent(new OrderStatusChangedEvent(saved, previousStatus, request.status()));
+        eventPublisher.publishEvent(new OrderStatusChangedEvent(
+                saved.getId(), saved.getOrderNumber(), previousStatus, request.status(), Instant.now()));
 
         return orderMapper.toResponse(saved);
     }

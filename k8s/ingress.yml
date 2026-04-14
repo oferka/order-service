@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: order-service-ingress
+  namespace: order-service
+  annotations:
+    nginx.ingress.kubernetes.io/limit-rps: "100"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - order-service.acme.com
+      secretName: order-service-tls  # placeholder — provision via cert-manager or supply manually
+  rules:
+    - host: order-service.acme.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: order-service
+                port:
+                  number: 80

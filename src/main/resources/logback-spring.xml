@@ -6,6 +6,27 @@
         <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
             <encoder class="net.logstash.logback.encoder.LogstashEncoder">
                 <includeCallerData>false</includeCallerData>
+                <fieldNames>
+                    <timestamp>timestamp</timestamp>
+                    <version>[ignore]</version>
+                    <levelValue>[ignore]</levelValue>
+                </fieldNames>
+                <!-- Explicitly include MDC fields: correlationId appears automatically via mdc provider -->
+                <providers>
+                    <timestamp/>
+                    <logLevel>
+                        <fieldName>level</fieldName>
+                    </logLevel>
+                    <loggerName>
+                        <fieldName>logger</fieldName>
+                    </loggerName>
+                    <message/>
+                    <mdc/>
+                    <threadName>
+                        <fieldName>thread</fieldName>
+                    </threadName>
+                    <stackTrace/>
+                </providers>
             </encoder>
         </appender>
         <root level="INFO">
@@ -13,11 +34,28 @@
         </root>
     </springProfile>
 
-    <!-- Human-readable logging for local development and tests -->
-    <springProfile name="default,dev,test">
+    <!-- Colored console logging for local development -->
+    <springProfile name="default,dev">
+        <conversionRule conversionWord="clr"
+                        converterClass="org.springframework.boot.logging.logback.ColorConverter"/>
         <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
             <encoder>
-                <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+                <pattern>%clr(%d{HH:mm:ss.SSS}){faint} %clr([%thread]){faint} %clr(%-5level){highlight} %clr(%logger{36}){cyan}%clr([%X{correlationId:-}]){blue} - %msg%n</pattern>
+            </encoder>
+        </appender>
+        <root level="INFO">
+            <appender-ref ref="STDOUT"/>
+        </root>
+        <logger name="org.example.orderservice" level="DEBUG" additivity="false">
+            <appender-ref ref="STDOUT"/>
+        </logger>
+    </springProfile>
+
+    <!-- Plain console logging for tests -->
+    <springProfile name="test">
+        <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} [%X{correlationId:-}] - %msg%n</pattern>
             </encoder>
         </appender>
         <root level="INFO">

@@ -35,6 +35,13 @@ management:
   endpoint:
     health:
       show-details: always
+  info:
+    build:
+      enabled: true
+    java:
+      enabled: true
+    env:
+      enabled: true
   metrics:
     tags:
       application: ${spring.application.name}

@@ -8,6 +8,7 @@ import org.example.orderservice.event.OrderCreatedEvent;
 import org.example.orderservice.event.OrderStatusChangedEvent;
 import org.example.orderservice.exception.EntityNotFoundException;
 import org.example.orderservice.mapper.OrderMapper;
+import org.example.orderservice.metrics.OrderMetrics;
 import org.example.orderservice.model.Customer;
 import org.example.orderservice.model.Order;
 import org.example.orderservice.model.OrderStatus;
@@ -39,38 +40,44 @@ public class OrderServiceImpl implements OrderService {
     private final CustomerRepository customerRepository;
     private final OrderMapper orderMapper;
     private final ApplicationEventPublisher eventPublisher;
+    private final OrderMetrics orderMetrics;
 
     public OrderServiceImpl(OrderRepository orderRepository,
                             CustomerRepository customerRepository,
                             OrderMapper orderMapper,
-                            ApplicationEventPublisher eventPublisher) {
+                            ApplicationEventPublisher eventPublisher,
+                            OrderMetrics orderMetrics) {
         this.orderRepository = orderRepository;
         this.customerRepository = customerRepository;
         this.orderMapper = orderMapper;
         this.eventPublisher = eventPublisher;
+        this.orderMetrics = orderMetrics;
     }
 
     @Override
     public OrderResponse createOrder(CreateOrderRequest request) {
-        Customer customer = customerRepository.findById(request.customerId())
-                .orElseThrow(() -> new EntityNotFoundException("Customer", request.customerId()));
+        return orderMetrics.getCreationTimer().record(() -> {
+            Customer customer = customerRepository.findById(request.customerId())
+                    .orElseThrow(() -> new EntityNotFoundException("Customer", request.customerId()));
 
-        Order order = orderMapper.toEntity(request);
-        order.setCustomer(customer);
-        order.setStatus(OrderStatus.CREATED);
-        order.getOrderItems().forEach(item -> item.setOrder(order));
+            Order order = orderMapper.toEntity(request);
+            order.setCustomer(customer);
+            order.setStatus(OrderStatus.CREATED);
+            order.getOrderItems().forEach(item -> item.setOrder(order));
 
-        BigDecimal totalAmount = request.items().stream()
-                .map(i -> i.unitPrice().multiply(BigDecimal.valueOf(i.quantity())))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        order.setTotalAmount(totalAmount);
+            BigDecimal totalAmount = request.items().stream()
+                    .map(i -> i.unitPrice().multiply(BigDecimal.valueOf(i.quantity())))
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            order.setTotalAmount(totalAmount);
 
-        Order saved = orderRepository.save(order);
-        log.info("Order created: orderNumber={}, customerId={}", saved.getOrderNumber(), customer.getId());
-        eventPublisher.publishEvent(new OrderCreatedEvent(
-                saved.getId(), saved.getOrderNumber(), customer.getId(), saved.getTotalAmount(), Instant.now()));
+            Order saved = orderRepository.save(order);
+            log.info("Order created: orderNumber={}, customerId={}", saved.getOrderNumber(), customer.getId());
+            eventPublisher.publishEvent(new OrderCreatedEvent(
+                    saved.getId(), saved.getOrderNumber(), customer.getId(), saved.getTotalAmount(), Instant.now()));
+            orderMetrics.recordOrderCreated(customer.getId());
 
-        return orderMapper.toResponse(saved);
+            return orderMapper.toResponse(saved);
+        });
     }
 
     @Override
@@ -114,6 +121,7 @@ public class OrderServiceImpl implements OrderService {
         log.info("Order status changed: orderNumber={}, {} -> {}", orderNumber, previousStatus, request.status());
         eventPublisher.publishEvent(new OrderStatusChangedEvent(
                 saved.getId(), saved.getOrderNumber(), previousStatus, request.status(), Instant.now()));
+        orderMetrics.recordStatusChanged(previousStatus, request.status());
 
         return orderMapper.toResponse(saved);
     }

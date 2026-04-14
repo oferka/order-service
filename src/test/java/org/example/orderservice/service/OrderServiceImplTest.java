@@ -1,5 +1,6 @@
 package org.example.orderservice.service;
 
+import io.micrometer.core.instrument.Timer;
 import org.example.orderservice.dto.AddressRequest;
 import org.example.orderservice.dto.CreateOrderRequest;
 import org.example.orderservice.dto.OrderItemRequest;
@@ -10,11 +11,13 @@ import org.example.orderservice.event.OrderCreatedEvent;
 import org.example.orderservice.event.OrderStatusChangedEvent;
 import org.example.orderservice.exception.EntityNotFoundException;
 import org.example.orderservice.mapper.OrderMapper;
+import org.example.orderservice.metrics.OrderMetrics;
 import org.example.orderservice.model.Customer;
 import org.example.orderservice.model.Order;
 import org.example.orderservice.model.OrderStatus;
 import org.example.orderservice.repository.CustomerRepository;
 import org.example.orderservice.repository.OrderRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -32,11 +35,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -49,9 +54,18 @@ class OrderServiceImplTest {
     @Mock private CustomerRepository customerRepository;
     @Mock private OrderMapper orderMapper;
     @Mock private ApplicationEventPublisher eventPublisher;
+    @Mock private OrderMetrics orderMetrics;
+    @Mock private Timer creationTimer;
 
     @InjectMocks
     private OrderServiceImpl orderService;
+
+    @BeforeEach
+    void setUp() {
+        lenient().when(orderMetrics.getCreationTimer()).thenReturn(creationTimer);
+        lenient().when(creationTimer.record(any(Supplier.class)))
+                .thenAnswer(inv -> inv.<Supplier<?>>getArgument(0).get());
+    }
 
     @Test
     void createOrder_Success() {

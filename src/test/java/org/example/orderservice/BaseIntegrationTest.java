@@ -91,6 +91,6 @@ public abstract class BaseIntegrationTest {
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
-        return objectMapper.readTree(body).get("orderNumber").asText();
+        return objectMapper.readTree(body).get("orderNumber").asString();
     }
 }

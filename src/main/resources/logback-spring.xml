@@ -11,22 +11,6 @@
                     <version>[ignore]</version>
                     <levelValue>[ignore]</levelValue>
                 </fieldNames>
-                <!-- Explicitly include MDC fields: correlationId appears automatically via mdc provider -->
-                <providers>
-                    <timestamp/>
-                    <logLevel>
-                        <fieldName>level</fieldName>
-                    </logLevel>
-                    <loggerName>
-                        <fieldName>logger</fieldName>
-                    </loggerName>
-                    <message/>
-                    <mdc/>
-                    <threadName>
-                        <fieldName>thread</fieldName>
-                    </threadName>
-                    <stackTrace/>
-                </providers>
             </encoder>
         </appender>
         <root level="INFO">

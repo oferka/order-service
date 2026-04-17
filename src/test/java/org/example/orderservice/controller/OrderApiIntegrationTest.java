@@ -7,6 +7,7 @@ import org.example.orderservice.model.Customer;
 import org.example.orderservice.model.OrderStatus;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.test.context.support.WithMockUser;
 
 import java.util.List;
 
@@ -18,6 +19,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+@WithMockUser
 class OrderApiIntegrationTest extends BaseIntegrationTest {
 
     @Nested

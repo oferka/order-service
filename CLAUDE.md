@@ -52,7 +52,6 @@
 - All REST endpoints must be versioned under /api/v1/
 - DTOs are records where possible, otherwise use Lombok @Builder
 - Return ResponseEntity from controllers, not raw objects
-- Use AssertJ assertions in tests, not JUnit assertEquals
 
 ## Error Handling
 - Throw custom exceptions (EntityNotFoundException, etc.)
@@ -66,6 +65,7 @@
 - Never log sensitive data (PII, payment details)
 
 ## Testing Conventions
+- Use AssertJ assertions in tests, not JUnit assertEquals
 - Unit tests: Mockito for service layer, no Spring context loaded
 - Integration tests: @SpringBootTest + Testcontainers for repository and end-to-end API tests
 - Test class naming: {ClassName}Test for unit, {ClassName}IntegrationTest for integration

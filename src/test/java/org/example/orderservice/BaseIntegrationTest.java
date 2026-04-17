@@ -4,6 +4,7 @@ import tools.jackson.databind.ObjectMapper;
 import org.example.orderservice.dto.AddressRequest;
 import org.example.orderservice.dto.CreateOrderRequest;
 import org.example.orderservice.dto.OrderItemRequest;
+import org.example.orderservice.dto.OrderResponse;
 import org.example.orderservice.model.Customer;
 import org.example.orderservice.repository.CustomerRepository;
 import org.example.orderservice.repository.OrderItemRepository;
@@ -11,7 +12,7 @@ import org.example.orderservice.repository.OrderRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.security.test.context.support.WithMockUser;
+
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -19,8 +20,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 import org.testcontainers.postgresql.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -32,13 +31,18 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
-@Testcontainers
 @ActiveProfiles("test")
-@WithMockUser
 public abstract class BaseIntegrationTest {
 
-    @Container
-    static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:18-alpine");
+    // Container is started once for the whole test run and stopped on JVM exit.
+    // Not using @Testcontainers/@Container to avoid per-class lifecycle which would
+    // stop and restart the container between test classes, breaking the cached Spring context.
+    static final PostgreSQLContainer postgres;
+
+    static {
+        postgres = new PostgreSQLContainer("postgres:18-alpine");
+        postgres.start();
+    }
 
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {
@@ -91,6 +95,6 @@ public abstract class BaseIntegrationTest {
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
-        return objectMapper.readTree(body).get("orderNumber").asString();
+        return objectMapper.readValue(body, OrderResponse.class).orderNumber();
     }
 }

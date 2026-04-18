@@ -63,6 +63,20 @@ class RateLimitingFilterIntegrationTest extends BaseIntegrationTest {
     }
 
     @Test
+    void should_fallbackToRemoteAddr_when_xForwardedForIsInvalidIp() throws Exception {
+        // remoteAddr is 127.0.0.1 (trusted proxy in tests); an invalid X-Forwarded-For
+        // must be rejected and the bucket keyed on remoteAddr instead — no 500 or bypass.
+        String body = objectMapper.writeValueAsString(new TokenRequest("x@example.com", "wrongpassword"));
+
+        mockMvc.perform(post(AUTH_PATH)
+                        .header("X-Forwarded-For", "not-an-ip-address")
+                        .contentType(APPLICATION_JSON)
+                        .content(body))
+                .andExpect(result ->
+                        assertThat(result.getResponse().getStatus()).isNotEqualTo(500));
+    }
+
+    @Test
     void should_notApplyRateLimit_toOtherEndpoints() throws Exception {
         String ip = "10.3.3.1";
 

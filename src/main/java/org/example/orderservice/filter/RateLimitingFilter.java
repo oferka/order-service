@@ -1,10 +1,11 @@
 package org.example.orderservice.filter;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
 import io.github.bucket4j.ConsumptionProbe;
 import io.github.bucket4j.Refill;
-
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -20,8 +21,9 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 @Component
 public class RateLimitingFilter extends OncePerRequestFilter {
@@ -29,11 +31,22 @@ public class RateLimitingFilter extends OncePerRequestFilter {
     private static final Logger log = LoggerFactory.getLogger(RateLimitingFilter.class);
     private static final String AUTH_TOKEN_PATH = "/api/v1/auth/token";
 
+    // Matches IPv4 (e.g. 192.168.1.1) and IPv6 (e.g. ::1, 2001:db8::1) literals only.
+    // Rejects hostnames and arbitrary strings so they cannot be used as bucket keys.
+    private static final Pattern IP_PATTERN =
+            Pattern.compile("^(?:\\d{1,3}\\.){3}\\d{1,3}$|^[0-9a-fA-F:]+$");
+
+    private final Set<String> trustedProxies;
+    private final Cache<String, Bucket> buckets;
     private final RateLimitProperties properties;
-    private final ConcurrentHashMap<String, Bucket> buckets = new ConcurrentHashMap<>();
 
     public RateLimitingFilter(RateLimitProperties properties) {
         this.properties = properties;
+        this.trustedProxies = Set.copyOf(properties.getTrustedProxies());
+        this.buckets = Caffeine.newBuilder()
+                .maximumSize(properties.getCacheMaxSize())
+                .expireAfterAccess(properties.getCacheTtlMinutes(), TimeUnit.MINUTES)
+                .build();
     }
 
     @Override
@@ -46,7 +59,7 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         }
 
         String clientIp = resolveClientIp(request);
-        Bucket bucket = buckets.computeIfAbsent(clientIp, ip -> createBucket());
+        Bucket bucket = buckets.get(clientIp, ip -> createBucket());
         ConsumptionProbe probe = bucket.tryConsumeAndReturnRemaining(1);
 
         if (probe.isConsumed()) {
@@ -71,11 +84,24 @@ public class RateLimitingFilter extends OncePerRequestFilter {
     }
 
     private String resolveClientIp(HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            return forwarded.split(",")[0].trim();
+        String remoteAddr = request.getRemoteAddr();
+        if (!trustedProxies.contains(remoteAddr)) {
+            return remoteAddr;
         }
-        return request.getRemoteAddr();
+        String forwarded = request.getHeader("X-Forwarded-For");
+        if (forwarded == null || forwarded.isBlank()) {
+            return remoteAddr;
+        }
+        String candidate = forwarded.split(",")[0].trim();
+        if (!isValidIp(candidate)) {
+            log.warn("Invalid IP in X-Forwarded-For header: '{}', falling back to remoteAddr={}", candidate, remoteAddr);
+            return remoteAddr;
+        }
+        return candidate;
+    }
+
+    private static boolean isValidIp(String candidate) {
+        return candidate != null && IP_PATTERN.matcher(candidate).matches();
     }
 
     private Bucket createBucket() {

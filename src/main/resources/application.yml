@@ -68,6 +68,11 @@ rate-limit:
     capacity: 10
     refill-tokens: 10
     refill-period-minutes: 1
+    trusted-proxies:
+      - 127.0.0.1
+      - "::1"
+    cache-max-size: 100000
+    cache-ttl-minutes: 5
 
 # ── JWT ────────────────────────────────────────────────────────────────────
 jwt:

@@ -42,7 +42,7 @@ public class CustomerServiceImpl implements CustomerService {
     @Override
     public CustomerResponse createCustomer(CreateCustomerRequest request) {
         if (customerRepository.existsByEmail(request.email())) {
-            throw new IllegalStateException("A customer with email already exists: " + request.email());
+            throw new IllegalStateException("Registration failed");
         }
         Customer customer = customerMapper.toEntity(request);
         customer.setPasswordHash(passwordEncoder.encode(request.password()));

@@ -76,6 +76,7 @@ public abstract class BaseIntegrationTest {
         return customerRepository.save(Customer.builder()
                 .email("test-" + UUID.randomUUID() + "@example.com")
                 .fullName("Test Customer")
+                .passwordHash("$2a$10$irrelevant.hash.for.test.data.only.xxxxxxxxxxxxxxxxxxxxxx")
                 .build());
     }
 

@@ -22,14 +22,14 @@ class AuthFlowIntegrationTest extends BaseIntegrationTest {
         mockMvc.perform(post("/api/v1/customers")
                         .contentType(APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
-                                new CreateCustomerRequest("alice@example.com", "Alice Smith", "+1234567890"))))
+                                new CreateCustomerRequest("alice@example.com", "Password123!", "Alice Smith", "+1234567890"))))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.email").value("alice@example.com"));
 
         // Step 2 — Obtain a JWT token (no auth required)
         String tokenResponseJson = mockMvc.perform(post("/api/v1/auth/token")
                         .contentType(APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new TokenRequest("alice@example.com"))))
+                        .content(objectMapper.writeValueAsString(new TokenRequest("alice@example.com", "Password123!"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").exists())
                 .andReturn()

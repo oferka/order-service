@@ -8,6 +8,8 @@ import org.example.orderservice.model.Customer;
 import org.example.orderservice.repository.CustomerRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,10 +23,14 @@ public class CustomerServiceImpl implements CustomerService {
 
     private final CustomerRepository customerRepository;
     private final CustomerMapper customerMapper;
+    private final PasswordEncoder passwordEncoder;
 
-    public CustomerServiceImpl(CustomerRepository customerRepository, CustomerMapper customerMapper) {
+    public CustomerServiceImpl(CustomerRepository customerRepository,
+                               CustomerMapper customerMapper,
+                               PasswordEncoder passwordEncoder) {
         this.customerRepository = customerRepository;
         this.customerMapper = customerMapper;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Override
@@ -32,9 +38,22 @@ public class CustomerServiceImpl implements CustomerService {
         if (customerRepository.existsByEmail(request.email())) {
             throw new IllegalStateException("A customer with email already exists: " + request.email());
         }
-        Customer saved = customerRepository.save(customerMapper.toEntity(request));
-        log.info("Customer created: id={}, email={}", saved.getId(), saved.getEmail());
+        Customer customer = customerMapper.toEntity(request);
+        customer.setPasswordHash(passwordEncoder.encode(request.password()));
+        Customer saved = customerRepository.save(customer);
+        log.info("Customer created: id={}", saved.getId());
         return customerMapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CustomerResponse verifyCredentials(String email, String rawPassword) {
+        Customer customer = customerRepository.findByEmail(email)
+                .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
+        if (!passwordEncoder.matches(rawPassword, customer.getPasswordHash())) {
+            throw new BadCredentialsException("Invalid credentials");
+        }
+        return customerMapper.toResponse(customer);
     }
 
     @Override

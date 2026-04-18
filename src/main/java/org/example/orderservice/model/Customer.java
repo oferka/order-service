@@ -43,6 +43,9 @@ public class Customer {
     @Column(name = "phone")
     private String phone;
 
+    @Column(name = "password_hash", nullable = false)
+    private String passwordHash;
+
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

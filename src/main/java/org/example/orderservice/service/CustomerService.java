@@ -12,4 +12,6 @@ public interface CustomerService {
     CustomerResponse getCustomerById(UUID id);
 
     CustomerResponse getCustomerByEmail(String email);
+
+    CustomerResponse verifyCredentials(String email, String rawPassword);
 }

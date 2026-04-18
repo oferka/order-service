@@ -131,5 +131,17 @@ class OrderApiIntegrationTest extends BaseIntegrationTest {
                     .andExpect(jsonPath("$.totalElements").value(15))
                     .andExpect(jsonPath("$.totalPages").value(3));
         }
+
+        @Test
+        void should_returnOrdersWithItems_when_listingOrders() throws Exception {
+            Customer customer = createTestCustomer();
+            createOrderViaApi(buildCreateOrderRequest(customer.getId()));
+
+            mockMvc.perform(get("/api/v1/orders")
+                            .param("customerId", customer.getId().toString()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.content[0].items").isArray())
+                    .andExpect(jsonPath("$.content[0].items.length()").value(1));
+        }
     }
 }

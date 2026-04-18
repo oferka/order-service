@@ -231,6 +231,7 @@ class OrderServiceImplTest {
             Page<Order> emptyPage = new PageImpl<>(List.of(), pageable, 0);
 
             when(orderRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(emptyPage);
+            when(orderRepository.findAllWithItemsAndCustomerByIdIn(List.of())).thenReturn(List.of());
 
             PagedResponse<OrderResponse> result = orderService.listOrders(customerId, status, pageable);
 
@@ -240,6 +241,7 @@ class OrderServiceImplTest {
             assertThat(result.totalElements()).isEqualTo(0);
             assertThat(result.totalPages()).isEqualTo(0);
             verify(orderRepository, times(1)).findAll(any(Specification.class), eq(pageable));
+            verify(orderRepository, times(1)).findAllWithItemsAndCustomerByIdIn(List.of());
         }
     }
 }

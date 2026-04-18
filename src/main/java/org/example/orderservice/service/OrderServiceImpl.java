@@ -30,7 +30,10 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -113,8 +116,12 @@ public class OrderServiceImpl implements OrderService {
         }
 
         Page<Order> page = orderRepository.findAll(Specification.allOf(specs), pageable);
-        List<OrderResponse> content = page.getContent().stream()
-                .map(orderMapper::toResponse)
+
+        List<UUID> ids = page.getContent().stream().map(Order::getId).toList();
+        Map<UUID, Order> byId = orderRepository.findAllWithItemsAndCustomerByIdIn(ids).stream()
+                .collect(Collectors.toMap(Order::getId, Function.identity()));
+        List<OrderResponse> content = ids.stream()
+                .map(id -> orderMapper.toResponse(byId.get(id)))
                 .toList();
 
         return new PagedResponse<>(content, page.getNumber(), page.getSize(),

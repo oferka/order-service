@@ -21,9 +21,12 @@ public interface OrderRepository extends JpaRepository<Order, UUID>, JpaSpecific
 
     Optional<Order> findByOrderNumber(String orderNumber);
 
-    @EntityGraph(attributePaths = {"orderItems"})
+    @EntityGraph(attributePaths = {"orderItems", "customer"})
     @Query("SELECT o FROM Order o WHERE o.orderNumber = :orderNumber")
     Optional<Order> findWithItemsByOrderNumber(@Param("orderNumber") String orderNumber);
+
+    @Query("SELECT DISTINCT o FROM Order o JOIN FETCH o.orderItems JOIN FETCH o.customer WHERE o.id IN :ids")
+    List<Order> findAllWithItemsAndCustomerByIdIn(@Param("ids") List<UUID> ids);
 
     Page<Order> findByCustomerId(UUID customerId, Pageable pageable);
 

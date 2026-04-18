@@ -13,10 +13,6 @@ spring:
       max-lifetime: 1800000
       pool-name: HikariPool-prod
 
-  h2:
-    console:
-      enabled: false
-
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:

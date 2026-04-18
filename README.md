@@ -4,12 +4,14 @@ Order management microservice built with Java 25 and Spring Boot 4.0.5.
 
 ## Prerequisites
 
-| Tool        | Version             |
-|-------------|---------------------|
-| Java        | 26+                 |
-| Maven       | 3.9+                |
-| Docker      | 24+ (optional)      |
-| PostgreSQL  | 18 (staging / prod) |
+| Tool     | Version   |
+|----------|-----------|
+| Java     | 25+       |
+| Maven    | 3.9+      |
+| Docker   | 24+       |
+| PostgreSQL | 18      |
+
+Docker is required on all profiles — there is no H2 fallback.
 
 ## Build
 
@@ -17,7 +19,15 @@ Order management microservice built with Java 25 and Spring Boot 4.0.5.
 mvn clean package -DskipTests
 ```
 
-## Run locally (H2 in-memory, dev profile)
+## Run locally (dev profile)
+
+Start PostgreSQL first (matches the defaults in `application.yml`):
+
+```bash
+docker compose up postgres -d
+```
+
+Then run the application:
 
 ```bash
 mvn spring-boot:run
@@ -29,9 +39,18 @@ Or with the packaged jar:
 java -jar target/order-service-0.0.1-SNAPSHOT.jar
 ```
 
-- H2 console: http://localhost:8080/h2-console  
-  JDBC URL: `jdbc:h2:mem:orderdb`
 - Swagger UI: http://localhost:8080/swagger-ui.html
+- OpenAPI JSON: http://localhost:8080/v3/api-docs
+
+Default dev datasource (overridable via env vars):
+
+| Variable      | Default     |
+|---------------|-------------|
+| `DB_HOST`     | `localhost` |
+| `DB_PORT`     | `5432`      |
+| `DB_NAME`     | `orderdb`   |
+| `DB_USER`     | `orderuser` |
+| `DB_PASSWORD` | `orderpass` |
 
 ## Run with a specific profile
 
@@ -49,42 +68,45 @@ java -jar target/order-service-0.0.1-SNAPSHOT.jar \
 | `DB_NAME`     | Database name     |
 | `DB_USER`     | Database username |
 | `DB_PASSWORD` | Database password |
+| `JWT_SECRET`  | JWT signing secret |
 
-## Docker
-
-### Build image
-
-```bash
-docker build -t order-service:latest .
-```
-
-### Run container
+## Docker Compose (full stack)
 
 ```bash
-docker run -p 8080:8080 \
-  -e SPRING_PROFILES_ACTIVE=staging \
-  -e DB_HOST=localhost \
-  -e DB_PORT=5432 \
-  -e DB_NAME=orders \
-  -e DB_USER=postgres \
-  -e DB_PASSWORD=secret \
-  order-service:latest
+docker compose up
 ```
+
+Starts order-service, PostgreSQL, Prometheus, and Grafana.
+
+| Service    | URL                        |
+|------------|----------------------------|
+| App        | http://localhost:8080      |
+| Swagger UI | http://localhost:8080/swagger-ui.html |
+| Prometheus | http://localhost:9090      |
+| Grafana    | http://localhost:3000 (admin/admin) |
 
 ## Profiles
 
-| Profile   | Database   | Connection pool | Log level |
-|-----------|------------|-----------------|-----------|
-| `default` | H2         | N/A             | DEBUG     |
-| `staging` | PostgreSQL | 10              | INFO      |
-| `prod`    | PostgreSQL | 30              | WARN      |
+| Profile   | Database   | Pool size | Log level |
+|-----------|------------|-----------|-----------|
+| `default` | PostgreSQL | 5         | DEBUG     |
+| `staging` | PostgreSQL | 10        | INFO      |
+| `prod`    | PostgreSQL | 30        | WARN      |
+
+## Tests
+
+Tests run against a real PostgreSQL instance via Testcontainers. Docker must be running.
+
+```bash
+mvn test
+```
 
 ## Observability
 
-| Endpoint                          | Description           |
-|-----------------------------------|-----------------------|
-| `/actuator/health`                | Health check          |
-| `/actuator/metrics`               | Micrometer metrics    |
-| `/actuator/prometheus`            | Prometheus scrape     |
-| `/swagger-ui.html`                | Swagger UI            |
-| `/v3/api-docs`                    | OpenAPI JSON          |
+| Endpoint               | Description        |
+|------------------------|--------------------|
+| `/actuator/health`     | Health check       |
+| `/actuator/metrics`    | Micrometer metrics |
+| `/actuator/prometheus` | Prometheus scrape  |
+| `/swagger-ui.html`     | Swagger UI         |
+| `/v3/api-docs`         | OpenAPI JSON       |

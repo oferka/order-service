@@ -97,6 +97,13 @@
             <version>${logstash-encoder.version}</version>
         </dependency>
 
+        <!-- ── Rate Limiting ────────────────────────────────────────────── -->
+        <dependency>
+            <groupId>com.bucket4j</groupId>
+            <artifactId>bucket4j-core</artifactId>
+            <version>8.10.1</version>
+        </dependency>
+
         <!-- ── Resilience ───────────────────────────────────────────────── -->
         <!-- spring-boot-starter-aop was renamed to spring-boot-starter-aspectj in Spring Boot 4 -->
         <dependency>

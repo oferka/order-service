@@ -62,6 +62,13 @@ springdoc:
   api-docs:
     path: /v3/api-docs
 
+# ── Rate limiting ──────────────────────────────────────────────────────────
+rate-limit:
+  auth:
+    capacity: 10
+    refill-tokens: 10
+    refill-period-minutes: 1
+
 # ── JWT ────────────────────────────────────────────────────────────────────
 jwt:
   secret: order-service-jwt-signing-secret-key-for-hmac-sha256-algorithm

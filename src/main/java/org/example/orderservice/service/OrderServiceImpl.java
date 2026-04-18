@@ -14,19 +14,21 @@ import org.example.orderservice.model.Order;
 import org.example.orderservice.model.OrderStatus;
 import org.example.orderservice.repository.CustomerRepository;
 import org.example.orderservice.repository.OrderRepository;
+import org.example.orderservice.security.SecurityUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
-
-import java.util.ArrayList;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -41,21 +43,27 @@ public class OrderServiceImpl implements OrderService {
     private final OrderMapper orderMapper;
     private final ApplicationEventPublisher eventPublisher;
     private final OrderMetrics orderMetrics;
+    private final SecurityUtils securityUtils;
 
     public OrderServiceImpl(OrderRepository orderRepository,
                             CustomerRepository customerRepository,
                             OrderMapper orderMapper,
                             ApplicationEventPublisher eventPublisher,
-                            OrderMetrics orderMetrics) {
+                            OrderMetrics orderMetrics,
+                            SecurityUtils securityUtils) {
         this.orderRepository = orderRepository;
         this.customerRepository = customerRepository;
         this.orderMapper = orderMapper;
         this.eventPublisher = eventPublisher;
         this.orderMetrics = orderMetrics;
+        this.securityUtils = securityUtils;
     }
 
     @Override
     public OrderResponse createOrder(CreateOrderRequest request) {
+        if (!securityUtils.isAdmin() && !request.customerId().equals(securityUtils.getCurrentUserId())) {
+            throw new AccessDeniedException("Access denied");
+        }
         return orderMetrics.getCreationTimer().record(() -> {
             Customer customer = customerRepository.findById(request.customerId())
                     .orElseThrow(() -> new EntityNotFoundException("Customer", request.customerId()));
@@ -85,16 +93,20 @@ public class OrderServiceImpl implements OrderService {
     public OrderResponse getOrderByOrderNumber(String orderNumber) {
         Order order = orderRepository.findWithItemsByOrderNumber(orderNumber)
                 .orElseThrow(() -> new EntityNotFoundException("Order", orderNumber));
+        assertOwnerOrAdmin(order.getCustomer().getId());
         return orderMapper.toResponse(order);
     }
 
     @Override
     @Transactional(readOnly = true)
     public PagedResponse<OrderResponse> listOrders(UUID customerId, OrderStatus status, Pageable pageable) {
-        List<Specification<Order>> specs = new ArrayList<>();
+        // Non-admins always see only their own orders regardless of the filter passed
+        UUID effectiveCustomerId = securityUtils.isAdmin() ? customerId : securityUtils.getCurrentUserId();
 
-        if (customerId != null) {
-            specs.add((root, query, cb) -> cb.equal(root.get("customer").get("id"), customerId));
+        List<Specification<Order>> specs = new ArrayList<>();
+        if (effectiveCustomerId != null) {
+            UUID id = effectiveCustomerId;
+            specs.add((root, query, cb) -> cb.equal(root.get("customer").get("id"), id));
         }
         if (status != null) {
             specs.add((root, query, cb) -> cb.equal(root.get("status"), status));
@@ -110,6 +122,7 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
+    @PreAuthorize("hasRole('ADMIN')")
     public OrderResponse updateOrderStatus(String orderNumber, UpdateOrderStatusRequest request) {
         Order order = orderRepository.findByOrderNumber(orderNumber)
                 .orElseThrow(() -> new EntityNotFoundException("Order", orderNumber));
@@ -128,6 +141,17 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public void cancelOrder(String orderNumber) {
+        Order order = orderRepository.findByOrderNumber(orderNumber)
+                .orElseThrow(() -> new EntityNotFoundException("Order", orderNumber));
+        assertOwnerOrAdmin(order.getCustomer().getId());
+        // Calls updateOrderStatus via this (bypasses @PreAuthorize proxy — intentional,
+        // cancelOrder has its own ownership check above).
         updateOrderStatus(orderNumber, new UpdateOrderStatusRequest(OrderStatus.CANCELLED));
+    }
+
+    private void assertOwnerOrAdmin(UUID ownerId) {
+        if (!securityUtils.isAdmin() && !ownerId.equals(securityUtils.getCurrentUserId())) {
+            throw new AccessDeniedException("Access denied");
+        }
     }
 }

@@ -6,13 +6,15 @@ import org.example.orderservice.dto.CreateOrderRequest;
 import org.example.orderservice.dto.OrderItemRequest;
 import org.example.orderservice.dto.OrderResponse;
 import org.example.orderservice.model.Customer;
+import org.example.orderservice.model.CustomerRole;
 import org.example.orderservice.repository.CustomerRepository;
 import org.example.orderservice.repository.OrderItemRepository;
 import org.example.orderservice.repository.OrderRepository;
+import org.example.orderservice.security.JwtService;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-
+import org.springframework.http.HttpHeaders;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -58,6 +60,7 @@ public abstract class BaseIntegrationTest {
     @Autowired protected CustomerRepository customerRepository;
     @Autowired protected OrderRepository orderRepository;
     @Autowired protected OrderItemRepository orderItemRepository;
+    @Autowired protected JwtService jwtService;
 
     protected MockMvc mockMvc;
 
@@ -73,11 +76,24 @@ public abstract class BaseIntegrationTest {
     }
 
     protected Customer createTestCustomer() {
+        return createTestCustomerWithRole(CustomerRole.ROLE_USER);
+    }
+
+    protected Customer createTestCustomerWithRole(CustomerRole role) {
         return customerRepository.save(Customer.builder()
                 .email("test-" + UUID.randomUUID() + "@example.com")
                 .fullName("Test Customer")
                 .passwordHash("$2a$10$irrelevant.hash.for.test.data.only.xxxxxxxxxxxxxxxxxxxxxx")
+                .role(role)
                 .build());
+    }
+
+    protected String generateTokenFor(Customer customer) {
+        return jwtService.generateToken(
+                customer.getId().toString(),
+                customer.getEmail(),
+                List.of(customer.getRole().name())
+        );
     }
 
     protected CreateOrderRequest buildCreateOrderRequest(UUID customerId) {
@@ -90,6 +106,18 @@ public abstract class BaseIntegrationTest {
 
     protected String createOrderViaApi(CreateOrderRequest request) throws Exception {
         String body = mockMvc.perform(post("/api/v1/orders")
+                        .contentType(APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        return objectMapper.readValue(body, OrderResponse.class).orderNumber();
+    }
+
+    protected String createOrderViaApi(CreateOrderRequest request, String token) throws Exception {
+        String body = mockMvc.perform(post("/api/v1/orders")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                         .contentType(APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())

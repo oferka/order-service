@@ -11,8 +11,6 @@ import java.util.List;
 @Service
 public class AuthServiceImpl implements AuthService {
 
-    private static final String ROLE_USER = "ROLE_USER";
-
     private final CustomerService customerService;
     private final JwtService jwtService;
 
@@ -27,7 +25,7 @@ public class AuthServiceImpl implements AuthService {
         String token = jwtService.generateToken(
                 customer.id().toString(),
                 customer.email(),
-                List.of(ROLE_USER)
+                List.of(customer.role().name())
         );
         return new TokenResponse(token);
     }

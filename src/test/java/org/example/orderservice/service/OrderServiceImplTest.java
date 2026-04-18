@@ -17,6 +17,7 @@ import org.example.orderservice.model.Order;
 import org.example.orderservice.model.OrderStatus;
 import org.example.orderservice.repository.CustomerRepository;
 import org.example.orderservice.repository.OrderRepository;
+import org.example.orderservice.security.SecurityUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -57,6 +58,7 @@ class OrderServiceImplTest {
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private OrderMetrics orderMetrics;
     @Mock private Timer creationTimer;
+    @Mock private SecurityUtils securityUtils;
 
     @InjectMocks
     private OrderServiceImpl orderService;
@@ -66,6 +68,9 @@ class OrderServiceImplTest {
         lenient().when(orderMetrics.getCreationTimer()).thenReturn(creationTimer);
         lenient().when(creationTimer.record(any(Supplier.class)))
                 .thenAnswer(inv -> inv.<Supplier<?>>getArgument(0).get());
+        // Unit tests run as admin so ownership checks are bypassed;
+        // authorization rules are covered by AuthorizationIntegrationTest.
+        lenient().when(securityUtils.isAdmin()).thenReturn(true);
     }
 
     @Nested
@@ -175,8 +180,9 @@ class OrderServiceImplTest {
         void should_cancelOrder_when_orderIsCreated() {
             String orderNumber = "ORD-CANCEL01";
             UUID orderId = UUID.randomUUID();
+            Customer customer = Customer.builder().id(UUID.randomUUID()).build();
             Order order = Order.builder()
-                    .id(orderId).orderNumber(orderNumber)
+                    .id(orderId).orderNumber(orderNumber).customer(customer)
                     .status(OrderStatus.CREATED).orderItems(new ArrayList<>()).build();
             Order savedOrder = Order.builder()
                     .id(orderId).orderNumber(orderNumber)
@@ -198,8 +204,9 @@ class OrderServiceImplTest {
         @Test
         void should_throwIllegalStateException_when_orderIsAlreadyDelivered() {
             String orderNumber = "ORD-DELIV002";
+            Customer customer = Customer.builder().id(UUID.randomUUID()).build();
             Order order = Order.builder()
-                    .id(UUID.randomUUID()).orderNumber(orderNumber)
+                    .id(UUID.randomUUID()).orderNumber(orderNumber).customer(customer)
                     .status(OrderStatus.DELIVERED).orderItems(new ArrayList<>()).build();
 
             when(orderRepository.findByOrderNumber(orderNumber)).thenReturn(Optional.of(order));

@@ -8,6 +8,9 @@ import org.example.orderservice.model.Customer;
 import org.example.orderservice.repository.CustomerRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.example.orderservice.security.SecurityUtils;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -24,13 +27,16 @@ public class CustomerServiceImpl implements CustomerService {
     private final CustomerRepository customerRepository;
     private final CustomerMapper customerMapper;
     private final PasswordEncoder passwordEncoder;
+    private final SecurityUtils securityUtils;
 
     public CustomerServiceImpl(CustomerRepository customerRepository,
                                CustomerMapper customerMapper,
-                               PasswordEncoder passwordEncoder) {
+                               PasswordEncoder passwordEncoder,
+                               SecurityUtils securityUtils) {
         this.customerRepository = customerRepository;
         this.customerMapper = customerMapper;
         this.passwordEncoder = passwordEncoder;
+        this.securityUtils = securityUtils;
     }
 
     @Override
@@ -59,6 +65,9 @@ public class CustomerServiceImpl implements CustomerService {
     @Override
     @Transactional(readOnly = true)
     public CustomerResponse getCustomerById(UUID id) {
+        if (!securityUtils.isAdmin() && !id.equals(securityUtils.getCurrentUserId())) {
+            throw new AccessDeniedException("Access denied");
+        }
         return customerRepository.findById(id)
                 .map(customerMapper::toResponse)
                 .orElseThrow(() -> new EntityNotFoundException("Customer", id));
@@ -66,6 +75,7 @@ public class CustomerServiceImpl implements CustomerService {
 
     @Override
     @Transactional(readOnly = true)
+    @PreAuthorize("hasRole('ADMIN')")
     public CustomerResponse getCustomerByEmail(String email) {
         return customerRepository.findByEmail(email)
                 .map(customerMapper::toResponse)

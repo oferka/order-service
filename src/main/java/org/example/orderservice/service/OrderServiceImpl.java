@@ -18,9 +18,12 @@ import org.example.orderservice.security.SecurityUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -65,6 +68,7 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
+    @Retryable(retryFor = DataIntegrityViolationException.class, maxAttempts = 3, backoff = @Backoff(delay = 50))
     public OrderResponse createOrder(CreateOrderRequest request) {
         if (!securityUtils.isAdmin() && !request.customerId().equals(securityUtils.getCurrentUserId())) {
             throw new AccessDeniedException("Access denied");

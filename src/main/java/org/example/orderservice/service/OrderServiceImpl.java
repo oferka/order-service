@@ -1,5 +1,6 @@
 package org.example.orderservice.service;
 
+import org.example.orderservice.audit.AuditLogger;
 import org.example.orderservice.dto.CreateOrderRequest;
 import org.example.orderservice.dto.OrderResponse;
 import org.example.orderservice.dto.PagedResponse;
@@ -52,19 +53,22 @@ public class OrderServiceImpl implements OrderService {
     private final ApplicationEventPublisher eventPublisher;
     private final OrderMetrics orderMetrics;
     private final SecurityUtils securityUtils;
+    private final AuditLogger auditLogger;
 
     public OrderServiceImpl(OrderRepository orderRepository,
                             CustomerRepository customerRepository,
                             OrderMapper orderMapper,
                             ApplicationEventPublisher eventPublisher,
                             OrderMetrics orderMetrics,
-                            SecurityUtils securityUtils) {
+                            SecurityUtils securityUtils,
+                            AuditLogger auditLogger) {
         this.orderRepository = orderRepository;
         this.customerRepository = customerRepository;
         this.orderMapper = orderMapper;
         this.eventPublisher = eventPublisher;
         this.orderMetrics = orderMetrics;
         this.securityUtils = securityUtils;
+        this.auditLogger = auditLogger;
     }
 
     @Override
@@ -146,6 +150,8 @@ public class OrderServiceImpl implements OrderService {
         Order saved = orderRepository.save(order);
 
         log.info("Order status changed: orderNumber={}, {} -> {}", orderNumber, previousStatus, request.status());
+        auditLogger.logAdminOperation(securityUtils.getCurrentUserIdAsString(), "ORDER_STATUS_CHANGE",
+                orderNumber + " " + previousStatus + "->" + request.status());
         eventPublisher.publishEvent(new OrderStatusChangedEvent(
                 saved.getId(), saved.getOrderNumber(), previousStatus, request.status(), Instant.now(),
                 MDC.get("correlationId")));

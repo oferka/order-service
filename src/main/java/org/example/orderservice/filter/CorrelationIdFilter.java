@@ -19,6 +19,7 @@ public class CorrelationIdFilter extends OncePerRequestFilter {
 
     private static final String CORRELATION_ID_HEADER = "X-Correlation-ID";
     private static final String MDC_CORRELATION_ID = "correlationId";
+    private static final String MDC_CLIENT_IP = "clientIp";
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -30,12 +31,14 @@ public class CorrelationIdFilter extends OncePerRequestFilter {
         }
 
         MDC.put(MDC_CORRELATION_ID, correlationId);
+        MDC.put(MDC_CLIENT_IP, request.getRemoteAddr());
         response.setHeader(CORRELATION_ID_HEADER, correlationId);
 
         try {
             filterChain.doFilter(request, response);
         } finally {
             MDC.remove(MDC_CORRELATION_ID);
+            MDC.remove(MDC_CLIENT_IP);
         }
     }
 }

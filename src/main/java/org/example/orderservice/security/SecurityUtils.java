@@ -2,6 +2,7 @@ package org.example.orderservice.security;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
 import java.util.UUID;
@@ -10,7 +11,12 @@ import java.util.UUID;
 public class SecurityUtils {
 
     public UUID getCurrentUserId() {
-        return UUID.fromString((String) getAuthentication().getPrincipal());
+        return UUID.fromString(getCurrentUserIdAsString());
+    }
+
+    public String getCurrentUserIdAsString() {
+        Object principal = getAuthentication().getPrincipal();
+        return (principal instanceof UserDetails ud) ? ud.getUsername() : (String) principal;
     }
 
     public boolean isAdmin() {

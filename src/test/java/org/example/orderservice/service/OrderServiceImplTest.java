@@ -17,6 +17,7 @@ import org.example.orderservice.model.Order;
 import org.example.orderservice.model.OrderStatus;
 import org.example.orderservice.repository.CustomerRepository;
 import org.example.orderservice.repository.OrderRepository;
+import org.example.orderservice.audit.AuditLogger;
 import org.example.orderservice.security.SecurityUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.security.access.AccessDeniedException;
@@ -60,6 +61,7 @@ class OrderServiceImplTest {
     @Mock private OrderMetrics orderMetrics;
     @Mock private Timer creationTimer;
     @Mock private SecurityUtils securityUtils;
+    @Mock private AuditLogger auditLogger;
 
     @InjectMocks
     private OrderServiceImpl orderService;

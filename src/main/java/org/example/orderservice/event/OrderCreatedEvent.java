@@ -9,6 +9,7 @@ public record OrderCreatedEvent(
         String orderNumber,
         UUID customerId,
         BigDecimal totalAmount,
-        Instant timestamp
+        Instant timestamp,
+        String correlationId
 ) {
 }

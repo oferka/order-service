@@ -10,6 +10,7 @@ public record OrderStatusChangedEvent(
         String orderNumber,
         OrderStatus previousStatus,
         OrderStatus newStatus,
-        Instant timestamp
+        Instant timestamp,
+        String correlationId
 ) {
 }

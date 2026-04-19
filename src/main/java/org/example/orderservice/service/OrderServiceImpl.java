@@ -26,6 +26,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.slf4j.MDC;
+
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -84,7 +86,8 @@ public class OrderServiceImpl implements OrderService {
             Order saved = orderRepository.save(order);
             log.info("Order created: orderNumber={}, customerId={}", saved.getOrderNumber(), customer.getId());
             eventPublisher.publishEvent(new OrderCreatedEvent(
-                    saved.getId(), saved.getOrderNumber(), customer.getId(), saved.getTotalAmount(), Instant.now()));
+                    saved.getId(), saved.getOrderNumber(), customer.getId(), saved.getTotalAmount(), Instant.now(),
+                    MDC.get("correlationId")));
             orderMetrics.recordOrderCreated();
 
             return orderMapper.toResponse(saved);
@@ -140,7 +143,8 @@ public class OrderServiceImpl implements OrderService {
 
         log.info("Order status changed: orderNumber={}, {} -> {}", orderNumber, previousStatus, request.status());
         eventPublisher.publishEvent(new OrderStatusChangedEvent(
-                saved.getId(), saved.getOrderNumber(), previousStatus, request.status(), Instant.now()));
+                saved.getId(), saved.getOrderNumber(), previousStatus, request.status(), Instant.now(),
+                MDC.get("correlationId")));
         orderMetrics.recordStatusChanged(previousStatus, request.status());
 
         return orderMapper.toResponse(saved);

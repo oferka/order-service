@@ -19,6 +19,22 @@ spring:
       ddl-auto: none
     show-sql: false
 
+# ── Actuator (production) ─────────────────────────────────────────────────
+management:
+  endpoints:
+    web:
+      exposure:
+        # prometheus scraped internally; health/info safe to expose publicly
+        include: health,info,prometheus
+  endpoint:
+    health:
+      # never reveal DB/disk details to unauthenticated callers
+      show-details: when-authorized
+  info:
+    env:
+      # avoid leaking env-var values (may contain secrets) in /actuator/info
+      enabled: false
+
 # ── Logging (production) ──────────────────────────────────────────────────
 logging:
   level:

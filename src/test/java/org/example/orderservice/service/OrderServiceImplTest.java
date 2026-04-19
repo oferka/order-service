@@ -19,6 +19,7 @@ import org.example.orderservice.repository.CustomerRepository;
 import org.example.orderservice.repository.OrderRepository;
 import org.example.orderservice.security.SecurityUtils;
 import org.junit.jupiter.api.BeforeEach;
+import org.springframework.security.access.AccessDeniedException;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -214,6 +215,29 @@ class OrderServiceImplTest {
             assertThatThrownBy(() -> orderService.cancelOrder(orderNumber))
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessageContaining("Cannot transition");
+
+            verify(orderRepository, never()).save(any());
+            verify(eventPublisher, never()).publishEvent(any());
+        }
+
+        @Test
+        void should_throwAccessDeniedException_when_nonOwnerCancels() {
+            // cancelOrder calls updateOrderStatus via `this`, bypassing @PreAuthorize.
+            // The only protection for non-owners is the assertOwnerOrAdmin check inside cancelOrder.
+            String orderNumber = "ORD-DENY001";
+            UUID ownerCustomerId = UUID.randomUUID();
+            UUID attackerId = UUID.randomUUID();
+            Customer owner = Customer.builder().id(ownerCustomerId).build();
+            Order order = Order.builder()
+                    .id(UUID.randomUUID()).orderNumber(orderNumber).customer(owner)
+                    .status(OrderStatus.CREATED).orderItems(new ArrayList<>()).build();
+
+            when(securityUtils.isAdmin()).thenReturn(false);
+            when(securityUtils.getCurrentUserId()).thenReturn(attackerId);
+            when(orderRepository.findByOrderNumber(orderNumber)).thenReturn(Optional.of(order));
+
+            assertThatThrownBy(() -> orderService.cancelOrder(orderNumber))
+                    .isInstanceOf(AccessDeniedException.class);
 
             verify(orderRepository, never()).save(any());
             verify(eventPublisher, never()).publishEvent(any());

@@ -85,7 +85,7 @@ public class OrderServiceImpl implements OrderService {
             log.info("Order created: orderNumber={}, customerId={}", saved.getOrderNumber(), customer.getId());
             eventPublisher.publishEvent(new OrderCreatedEvent(
                     saved.getId(), saved.getOrderNumber(), customer.getId(), saved.getTotalAmount(), Instant.now()));
-            orderMetrics.recordOrderCreated(customer.getId());
+            orderMetrics.recordOrderCreated();
 
             return orderMapper.toResponse(saved);
         });

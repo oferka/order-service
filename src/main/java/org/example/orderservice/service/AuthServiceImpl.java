@@ -5,6 +5,7 @@ import org.example.orderservice.dto.TokenRequest;
 import org.example.orderservice.dto.TokenResponse;
 import org.example.orderservice.security.JwtService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -20,6 +21,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public TokenResponse authenticate(TokenRequest request) {
         CustomerResponse customer = customerService.verifyCredentials(request.email(), request.password());
         String token = jwtService.generateToken(
